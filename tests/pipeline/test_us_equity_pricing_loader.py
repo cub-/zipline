@@ -56,6 +56,7 @@ from zipline.pipeline.data import USEquityPricing
 from zipline.utils.test_utils import (
     seconds_to_timestamp,
     str_to_seconds,
+    str_to_datetime64,
 )
 
 # Test calendar ranges over the month of June 2015
@@ -397,13 +398,23 @@ DIVIDENDS = DataFrame(
 )
 
 
+class DailyBarSpotReader(object):
+
+    def __init__(self):
+        pass
+
+    def spot_price(self, sid, day, column):
+        return 100.0
+
+
 class USEquityPricingLoaderTestCase(TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.test_data_dir = TempDirectory()
         cls.db_path = cls.test_data_dir.getpath('adjustments.db')
-        writer = SQLiteAdjustmentWriter(cls.db_path)
+        daily_bar_spot_reader = DailyBarSpotReader()
+        writer = SQLiteAdjustmentWriter(cls.db_path, daily_bar_spot_reader)
         writer.write(SPLITS, MERGERS, DIVIDENDS)
 
         cls.assets = TEST_QUERY_ASSETS

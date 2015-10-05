@@ -12,8 +12,11 @@ from nose_parameterized import parameterized
 from numpy import (
     array,
     arange,
+    datetime64,
+    float64,
     full_like,
     nan,
+    uint32,
 )
 from numpy.testing import assert_almost_equal
 from pandas import (
@@ -370,7 +373,7 @@ class PipelineAlgorithmTestCase(TestCase):
                 'sid': cls.AAPL,
             }
         ])
-        mergers = dividends = DataFrame(
+        mergers = DataFrame(
             {
                 # Hackery to make the dtypes correct on an empty frame.
                 'effective_date': array([], dtype=int),
@@ -380,6 +383,12 @@ class PipelineAlgorithmTestCase(TestCase):
             index=DatetimeIndex([], tz='UTC'),
             columns=['effective_date', 'ratio', 'sid'],
         )
+        dividends = DataFrame({
+            'gross_amount': array([], dtype=uint32),
+            'ex_date': array([], dtype=datetime64),
+            'sid': array([], dtype=uint32),
+            'ratio': array([], dtype=float64),
+        })
         writer.write(splits, mergers, dividends)
         return SQLiteAdjustmentReader(dbpath)
 

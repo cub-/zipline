@@ -5,6 +5,7 @@ from itertools import (
 from logbook import FileHandler
 from mock import patch
 from numpy.testing import assert_array_equal
+from numpy import datetime64
 import operator
 from zipline.finance.blotter import ORDER_STATUS
 from zipline.utils import security_list
@@ -41,6 +42,19 @@ def str_to_seconds(s):
     1388534400
     """
     return int((pd.Timestamp(s, tz='UTC') - EPOCH).total_seconds())
+
+
+def str_to_datetime64(s):
+    """
+    Convert a pandas-intelligible string to datetime64 since UTC.
+
+    >>> from pandas import Timestamp
+    >>> (Timestamp('2014-01-01') - Timestamp(0)).total_seconds()
+    TODO
+    >>> str_to_seconds('2014-01-01')
+    TODO
+    """
+    return pd.Timestamp(s, tz='UTC').to_datetime64()
 
 
 def setup_logger(test, path='test.log'):
