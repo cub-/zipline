@@ -370,31 +370,62 @@ MERGERS = DataFrame(
 DIVIDENDS = DataFrame(
     [
         # Before query range, should be excluded.
+        {'ex_date': str_to_datetime64('2015-06-01'),
+         'gross_amount': 90,
+         'sid': 1},
+        # First day of query range, should be excluded.
+        {'ex_date': str_to_datetime64('2015-06-10'),
+         'gross_amount': 80,
+         'sid': 3},
+        # Third day of query range, should have last_row of 2
+        {'ex_date': str_to_datetime64('2015-06-12'),
+         'gross_amount': 70,
+         'sid': 3},
+        # After query range, should be excluded.
+        {'ex_date': str_to_datetime64('2015-06-25'),
+         'gross_amount': 60,
+         'sid': 6},
+        # Another action in query range, should have last_row of 3
+        {'ex_date': str_to_datetime64('2015-06-15'),
+         'gross_amount': 50,
+         'sid': 3},
+        # Last day of range.  Should have last_row of 7
+        {'ex_date': str_to_datetime64('2015-06-19'),
+         'gross_amount': 40,
+         'sid': 3},
+    ],
+    columns=['ex_date', 'gross_amount', 'sid'],
+)
+
+
+DIVIDENDS_EXPECTED = DataFrame(
+    [
+        # Before query range, should be excluded.
         {'effective_date': str_to_seconds('2015-06-01'),
-         'ratio': 1.301,
+         'ratio': 0.0,
          'sid': 1},
         # First day of query range, should be excluded.
         {'effective_date': str_to_seconds('2015-06-10'),
-         'ratio': 3.310,
+         'ratio': 0.20,
          'sid': 3},
         # Third day of query range, should have last_row of 2
         {'effective_date': str_to_seconds('2015-06-12'),
-         'ratio': 3.312,
+         'ratio': 0.30,
          'sid': 3},
         # After query range, should be excluded.
         {'effective_date': str_to_seconds('2015-06-25'),
-         'ratio': 6.325,
+         'ratio': 0.40,
          'sid': 6},
         # Another action in query range, should have last_row of 3
         {'effective_date': str_to_seconds('2015-06-15'),
-         'ratio': 3.315,
+         'ratio': 0.50,
          'sid': 3},
         # Last day of range.  Should have last_row of 7
         {'effective_date': str_to_seconds('2015-06-19'),
-         'ratio': 3.319,
+         'ratio': 0.60,
          'sid': 3},
     ],
-    columns=['effective_date', 'ratio', 'sid'],
+    columns=['ex_date', 'gross_amount', 'sid'],
 )
 
 
@@ -403,7 +434,7 @@ class DailyBarSpotReader(object):
     def __init__(self):
         pass
 
-    def spot_price(self, sid, day, column):
+    def prev_spot_price(self, sid, day, column):
         return 100.0
 
 
@@ -438,7 +469,7 @@ class USEquityPricingLoaderTestCase(TestCase):
     def test_input_sanity(self):
         # Ensure that the input data doesn't contain adjustments during periods
         # where the corresponding asset didn't exist.
-        for table in SPLITS, MERGERS, DIVIDENDS:
+        for table in SPLITS, MERGERS, DIVIDENDS_EXPECTED:
             for eff_date_secs, _, sid in table.itertuples(index=False):
                 eff_date = Timestamp(eff_date_secs, unit='s')
                 asset_start, asset_end = EQUITY_INFO.ix[

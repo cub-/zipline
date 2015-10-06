@@ -67,7 +67,7 @@ class SQLiteAdjustmentWriter(object):
     SQLiteAdjustmentReader
     """
 
-    def __init__(self, conn_or_path, overwrite=False):
+    def __init__(self, conn_or_path, daily_bar_spot_reader, overwrite=False):
         if isinstance(conn_or_path, sqlite3.Connection):
             self.conn = conn_or_path
         elif isinstance(conn_or_path, str):
@@ -80,6 +80,8 @@ class SQLiteAdjustmentWriter(object):
             self.conn = sqlite3.connect(conn_or_path)
         else:
             raise TypeError("Unknown connection type %s" % type(conn_or_path))
+
+        self.daily_bar_spot_reader = daily_bar_spot_reader
 
     def write_frame(self, tablename, frame):
         if frozenset(frame.columns) != SQLITE_ADJUSTMENT_COLUMNS:
@@ -120,10 +122,21 @@ class SQLiteAdjustmentWriter(object):
 
         sids = dividends.sid[mask]
         ex_dates = dividends.ex_date[mask]
+        gross_amounts = dividends.gross_amount[mask]
 
         ratios = np.full(len(mask), np.nan)
 
+        spot_reader = self.daily_bar_spot_reader
+
+        for i, gross_amount in enumerate(gross_amounts):
+            sid = sids[i]
+            ex_date = ex_dates[i]
+            prev_close = spot_reader.prev_spot_price(sid, ex_date, 'close')
+            ratio = 1.0 - gross_amount / (prev_close)
+            ratios[i] = ratio
+
         effective_dates = (ex_dates.astype(int64) / int(1e9)).astype(uint32)
+
         return pd.DataFrame({
             'sid': sids,
             'effective_date': effective_dates,
