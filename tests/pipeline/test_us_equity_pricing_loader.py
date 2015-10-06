@@ -700,7 +700,8 @@ class USEquityPricingLoaderTestCase(TestCase):
                     self.assets,
                     baseline,
                     # Apply all adjustments.
-                    concat([SPLITS, MERGERS, DIVIDENDS], ignore_index=True),
+                    concat([SPLITS, MERGERS, DIVIDENDS_EXPECTED],
+                           ignore_index=True),
                 )
                 assert_allclose(expected_adjusted_highs, window)
 

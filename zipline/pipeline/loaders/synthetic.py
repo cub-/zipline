@@ -263,8 +263,8 @@ class NullAdjustmentReader(SQLiteAdjustmentReader):
 
     def __init__(self):
         conn = sqlite3_connect(':memory:')
-        self.daily_bar_spot_reader = DailyBarSpotReader()
-        writer = SQLiteAdjustmentWriter(conn)
+        daily_bar_spot_reader = DailyBarSpotReader()
+        writer = SQLiteAdjustmentWriter(conn, daily_bar_spot_reader)
         empty = DataFrame({
             'sid': array([], dtype=uint32),
             'effective_date': array([], dtype=uint32),
