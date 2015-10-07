@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import bcolz
-import pd
+import pandas as pd
 
 
 class NoDataOnDate(Exception):
     pass
 
 
-class DailyBarSpotReader(object):
+class BcolzDailyBarSpotReader(object):
 
     def __init__(self, daily_bars_path):
         daily_bar_table = bcolz.ctable(rootdir=daily_bars_path)
@@ -40,7 +40,7 @@ class DailyBarSpotReader(object):
         self.closes = daily_bar_table['close'][:]
         self.daily_bar_sids = daily_bar_table['id'][:]
 
-    def spot_price(self, sid, day):
+    def unadjusted_spot_price(self, sid, day):
         day_loc = self.trading_days.searchsorted(day)
         offset = day_loc - self.calendar_offset[sid]
         if offset < 0:
