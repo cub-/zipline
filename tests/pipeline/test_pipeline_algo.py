@@ -305,6 +305,15 @@ class ClosesOnly(TestCase):
         algo.run(source=self.closes.iloc[10:17])
 
 
+class DailyBarSpotReader(object):
+
+    def __init__(self):
+        pass
+
+    def prev_spot_price(self, sid, day, column):
+        return 100.0
+
+
 class PipelineAlgorithmTestCase(TestCase):
 
     @classmethod
@@ -365,7 +374,7 @@ class PipelineAlgorithmTestCase(TestCase):
     @classmethod
     def create_adjustment_reader(cls, tempdir):
         dbpath = tempdir.getpath('adjustments.sqlite')
-        writer = SQLiteAdjustmentWriter(dbpath)
+        writer = SQLiteAdjustmentWriter(dbpath, DailyBarSpotReader())
         splits = DataFrame.from_records([
             {
                 'effective_date': str_to_seconds('2014-06-09'),
