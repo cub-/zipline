@@ -23,24 +23,32 @@ class NoDataOnDate(Exception):
 class BcolzDailyBarSpotReader(object):
 
     def __init__(self, daily_bars_path):
-        daily_bar_table = bcolz.ctable(rootdir=daily_bars_path)
-        calendar = daily_bar_table.attrs['calendar']
+        self.daily_bar_table = bcolz.ctable(rootdir=daily_bars_path, mode='r')
+        calendar = self.daily_bar_table.attrs['calendar']
         self.trading_days = pd.DatetimeIndex(calendar, tz='UTC')
 
         # For indexing into daily bars.
         # We may be able to reuse code from DataPortal when that is ready.
-        self.first_rows = {int(k): v for k, v
-                           in daily_bar_table.attrs['first_row'].iteritems()}
-        self.last_rows = {int(k): v for k, v
-                          in daily_bar_table.attrs['last_row'].iteritems()}
+        self.first_rows = {
+            int(k): v for k, v
+            in self.daily_bar_table.attrs['first_row'].iteritems()}
+        self.last_rows = {
+            int(k): v for k, v
+            in self.daily_bar_table.attrs['last_row'].iteritems()}
         self.calendar_offset = {
             int(k): v for k, v
-            in daily_bar_table.attrs['calendar_offset'].iteritems()}
+            in self.daily_bar_table.attrs['calendar_offset'].iteritems()}
 
-        self.closes = daily_bar_table['close'][:]
-        self.daily_bar_sids = daily_bar_table['id'][:]
+        self._cols = {}
 
-    def unadjusted_spot_price(self, sid, day):
+    def daily_bar_col(self, colname):
+        try:
+            col = self._cols[colname]
+        except KeyError:
+            col = self._cols[colname] = self.daily_bar_table[colname][:]
+        return col
+
+    def unadjusted_spot_price(self, sid, day, colname):
         day_loc = self.trading_days.get_loc(day)
         offset = day_loc - self.calendar_offset[sid]
         if offset < 0:
@@ -52,4 +60,4 @@ class BcolzDailyBarSpotReader(object):
             raise NoDataOnDate(
                 "No data on or after day={0} for sid={1}".format(
                     day, sid))
-        return self.closes[ix] * 0.001
+        return self.daily_bar_col(colname)[ix] * 0.001

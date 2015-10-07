@@ -31,6 +31,8 @@ import numpy as np
 
 from six import iteritems
 
+from zipline.data.us_equity_pricing import NoDataOnDate
+
 logger = logbook.Logger('Adjustments')
 
 
@@ -67,7 +69,8 @@ class SQLiteAdjustmentWriter(object):
     SQLiteAdjustmentReader
     """
 
-    def __init__(self, conn_or_path, daily_bar_spot_reader, overwrite=False):
+    def __init__(self, conn_or_path, trading_days,
+                 daily_bar_spot_reader, overwrite=False):
         if isinstance(conn_or_path, sqlite3.Connection):
             self.conn = conn_or_path
         elif isinstance(conn_or_path, str):
@@ -81,6 +84,7 @@ class SQLiteAdjustmentWriter(object):
         else:
             raise TypeError("Unknown connection type %s" % type(conn_or_path))
 
+        self.trading_days = trading_days
         self.daily_bar_spot_reader = daily_bar_spot_reader
 
     def write_frame(self, tablename, frame):
@@ -120,20 +124,33 @@ class SQLiteAdjustmentWriter(object):
         # Remove rows with no gross_amount
         mask = pd.notnull(dividends.gross_amount)
 
-        sids = dividends.sid[mask]
-        ex_dates = dividends.ex_date[mask]
-        gross_amounts = dividends.gross_amount[mask]
+        sids = dividends.sid[mask].values
+        ex_dates = dividends.ex_date[mask].values
+        gross_amounts = dividends.gross_amount[mask].values
 
-        ratios = np.full(len(mask), np.nan)
+        ratios = np.full(len(mask[mask]), np.nan)
 
         spot_reader = self.daily_bar_spot_reader
+
+        trading_days = self.trading_days
 
         for i, gross_amount in enumerate(gross_amounts):
             sid = sids[i]
             ex_date = ex_dates[i]
-            prev_close = spot_reader.prev_spot_price(sid, ex_date, 'close')
-            ratio = 1.0 - gross_amount / (prev_close)
-            ratios[i] = ratio
+            day_loc = trading_days.get_loc(ex_date)
+            div_adj_date = trading_days[day_loc - 1]
+            try:
+                prev_close = spot_reader.unadjusted_spot_price(
+                    sid, div_adj_date, 'close')
+                ratio = 1.0 - gross_amount / (prev_close)
+                ratios[i] = ratio
+            except NoDataOnDate:
+                logger.warn("Couldn't compute ratio for dividend %s" % {
+                    'sid': sid,
+                    'ex_date': ex_date,
+                    'gross_amount': gross_amount,
+                })
+                continue
 
         effective_dates = (ex_dates.astype(int64) / int(1e9)).astype(uint32)
 
