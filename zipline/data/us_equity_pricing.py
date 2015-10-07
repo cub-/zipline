@@ -41,7 +41,7 @@ class BcolzDailyBarSpotReader(object):
         self.daily_bar_sids = daily_bar_table['id'][:]
 
     def unadjusted_spot_price(self, sid, day):
-        day_loc = self.trading_days.searchsorted(day)
+        day_loc = self.trading_days.get_loc(day)
         offset = day_loc - self.calendar_offset[sid]
         if offset < 0:
             raise NoDataOnDate(

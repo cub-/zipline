@@ -28,10 +28,23 @@ from testfixtures import TempDirectory
 from zipline.pipeline.loaders.synthetic import SyntheticDailyBarWriter
 from zipline.finance.trading import TradingEnvironment
 
-from zipline.data.us_equity_pricing import BcolzDailyBarSpotReader
+from zipline.data.us_equity_pricing import (
+    BcolzDailyBarSpotReader,
+    NoDataOnDate
+)
 
 
-# Test calendar ranges over the month of June 2015
+# Test calendar ranges over the month of May and June 2015
+#      May 2015
+# Su Mo Tu We Th Fr Sa
+#                1  2
+#  3  4  5  6  7  8  9
+# 10 11 12 13 14 15 16
+# 17 18 19 20 21 22 23
+# 24 25 26 27 28 29 30
+# 31
+
+
 #      June 2015
 # Mo Tu We Th Fr Sa Su
 #  1  2  3  4  5  6  7
@@ -39,7 +52,7 @@ from zipline.data.us_equity_pricing import BcolzDailyBarSpotReader
 # 15 16 17 18 19 20 21
 # 22 23 24 25 26 27 28
 # 29 30
-TEST_CALENDAR_START = Timestamp('2015-06-01', tz='UTC')
+TEST_CALENDAR_START = Timestamp('2015-05-01', tz='UTC')
 TEST_CALENDAR_STOP = Timestamp('2015-06-30', tz='UTC')
 
 
@@ -120,3 +133,15 @@ class BcolzDailyBarSpotReaderTestCase(TestCase):
         price = self.daily_bar_spot_reader.unadjusted_spot_price(
             2, Timestamp('2015-06-22', tz='UTC'))
         self.assertEqual(235651.0, price)
+
+    def test_unadjusted_spot_price_no_data(self):
+
+        # before
+        with self.assertRaises(NoDataOnDate):
+            self.daily_bar_spot_reader.unadjusted_spot_price(
+                1, Timestamp('2015-05-29', tz='UTC'))
+
+        # after
+        with self.assertRaises(NoDataOnDate):
+            self.daily_bar_spot_reader.unadjusted_spot_price(
+                1, Timestamp('2015-06-08', tz='UTC'))
