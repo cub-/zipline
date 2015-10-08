@@ -52,7 +52,7 @@ SQLITE_DIVIDEND_PAYOUT_COLUMNS = frozenset(
      'pay_date',
      'record_date',
      'net_amount',
-     'gross_amonut'])
+     'gross_amount'])
 SQLITE_DIVIDEND_PAYOUT_COLUMN_DTYPES = {
     'sid': integer,
     'ex_date': integer,
