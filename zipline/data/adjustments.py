@@ -363,11 +363,11 @@ class SQLiteAdjustmentWriter(object):
         )
         self.conn.execute(
             "CREATE INDEX dividend_payouts_ex_date "
-            "ON dividends_payouts(ex_date)"
+            "ON dividend_payouts(ex_date)"
         )
         self.conn.execute(
             "CREATE INDEX dividend_payouts_record_date "
-            "ON dividends_payouts(record_date)"
+            "ON dividend_payouts(record_date)"
         )
         self.conn.execute(
             "CREATE INDEX stock_dividend_payouts_sid "
@@ -375,11 +375,11 @@ class SQLiteAdjustmentWriter(object):
         )
         self.conn.execute(
             "CREATE INDEX stock_dividend_payouts_ex_date "
-            "ON stock_dividends_payouts(ex_date)"
+            "ON stock_dividend_payouts(ex_date)"
         )
         self.conn.execute(
             "CREATE INDEX stock_dividend_payouts_record_date "
-            "ON stock_dividends_payouts(record_date)"
+            "ON stock_dividend_payouts(record_date)"
         )
 
     def close(self):
