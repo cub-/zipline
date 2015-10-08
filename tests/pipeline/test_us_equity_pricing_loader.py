@@ -56,7 +56,6 @@ from zipline.pipeline.data import USEquityPricing
 from zipline.utils.test_utils import (
     seconds_to_timestamp,
     str_to_seconds,
-    str_to_datetime64,
 )
 
 # Test calendar ranges over the month of June 2015
@@ -370,31 +369,61 @@ MERGERS = DataFrame(
 DIVIDENDS = DataFrame(
     [
         # Before query range, should be excluded.
-        {'ex_date': str_to_datetime64('2015-06-01'),
-         'gross_amount': 90,
+        {'declared_date': Timestamp('2015-05-01', tz='UTC').to_datetime64(),
+         'ex_date': Timestamp('2015-06-01', tz='UTC').to_datetime64(),
+         'record_date': Timestamp('2015-06-03', tz='UTC').to_datetime64(),
+         'pay_date': Timestamp('2015-06-05', tz='UTC').to_datetime64(),
+         'net_amount': 90.0,
+         'gross_amount': 90.0,
          'sid': 1},
         # First day of query range, should be excluded.
-        {'ex_date': str_to_datetime64('2015-06-10'),
-         'gross_amount': 80,
+        {'declared_date': Timestamp('2015-06-01', tz='UTC').to_datetime64(),
+         'ex_date': Timestamp('2015-06-10', tz='UTC').to_datetime64(),
+         'record_date': Timestamp('2015-06-15', tz='UTC').to_datetime64(),
+         'pay_date': Timestamp('2015-06-17', tz='UTC').to_datetime64(),
+         'net_amount': 80.0,
+         'gross_amount': 80.0,
          'sid': 3},
         # Third day of query range, should have last_row of 2
-        {'ex_date': str_to_datetime64('2015-06-12'),
-         'gross_amount': 70,
+        {'declared_date': Timestamp('2015-06-01', tz='UTC').to_datetime64(),
+         'ex_date': Timestamp('2015-06-12', tz='UTC').to_datetime64(),
+         'record_date': Timestamp('2015-06-15', tz='UTC').to_datetime64(),
+         'pay_date': Timestamp('2015-06-17', tz='UTC').to_datetime64(),
+         'net_amount': 70.0,
+         'gross_amount': 70.0,
          'sid': 3},
         # After query range, should be excluded.
-        {'ex_date': str_to_datetime64('2015-06-25'),
-         'gross_amount': 60,
+        {'declared_date': Timestamp('2015-06-01', tz='UTC').to_datetime64(),
+         'ex_date': Timestamp('2015-06-25', tz='UTC').to_datetime64(),
+         'record_date': Timestamp('2015-06-28', tz='UTC').to_datetime64(),
+         'pay_date': Timestamp('2015-06-30', tz='UTC').to_datetime64(),
+         'net_amount': 60.0,
+         'gross_amount': 60.0,
          'sid': 6},
         # Another action in query range, should have last_row of 3
-        {'ex_date': str_to_datetime64('2015-06-15'),
-         'gross_amount': 50,
+        {'declared_date': Timestamp('2015-06-01', tz='UTC').to_datetime64(),
+         'ex_date': Timestamp('2015-06-15', tz='UTC').to_datetime64(),
+         'record_date': Timestamp('2015-06-18', tz='UTC').to_datetime64(),
+         'pay_date': Timestamp('2015-06-20', tz='UTC').to_datetime64(),
+         'net_amount': 50.0,
+         'gross_amount': 50.0,
          'sid': 3},
         # Last day of range.  Should have last_row of 7
-        {'ex_date': str_to_datetime64('2015-06-19'),
-         'gross_amount': 40,
+        {'declared_date': Timestamp('2015-06-01', tz='UTC').to_datetime64(),
+         'ex_date': Timestamp('2015-06-19', tz='UTC').to_datetime64(),
+         'record_date': Timestamp('2015-06-22', tz='UTC').to_datetime64(),
+         'pay_date': Timestamp('2015-06-30', tz='UTC').to_datetime64(),
+         'net_amount': 40.0,
+         'gross_amount': 40.0,
          'sid': 3},
     ],
-    columns=['ex_date', 'gross_amount', 'sid'],
+    columns=['declared_date',
+             'ex_date',
+             'record_date',
+             'pay_date',
+             'net_amount',
+             'gross_amount',
+             'sid'],
 )
 
 
@@ -434,7 +463,7 @@ class DailyBarSpotReader(object):
     def __init__(self):
         pass
 
-    def prev_spot_price(self, sid, day, column):
+    def unadjusted_spot_price(self, sid, day, column):
         return 100.0
 
 
@@ -445,11 +474,13 @@ class USEquityPricingLoaderTestCase(TestCase):
         cls.test_data_dir = TempDirectory()
         cls.db_path = cls.test_data_dir.getpath('adjustments.db')
         daily_bar_spot_reader = DailyBarSpotReader()
-        writer = SQLiteAdjustmentWriter(cls.db_path, daily_bar_spot_reader)
+        all_days = TradingEnvironment().trading_days
+        writer = SQLiteAdjustmentWriter(cls.db_path,
+                                        all_days,
+                                        daily_bar_spot_reader)
         writer.write(SPLITS, MERGERS, DIVIDENDS)
 
         cls.assets = TEST_QUERY_ASSETS
-        all_days = TradingEnvironment().trading_days
         cls.calendar_days = all_days[
             all_days.slice_indexer(TEST_CALENDAR_START, TEST_CALENDAR_STOP)
         ]

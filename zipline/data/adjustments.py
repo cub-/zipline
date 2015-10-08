@@ -236,7 +236,7 @@ class SQLiteAdjustmentWriter(object):
                 })
                 continue
 
-        effective_dates = (ex_dates.astype(int64) / int(1e9)).astype(uint32)
+        effective_dates = ex_dates.astype('datetime64[s]').astype(uint32)
 
         return pd.DataFrame({
             'sid': sids,
