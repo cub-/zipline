@@ -45,10 +45,39 @@ SQLITE_ADJUSTMENT_COLUMN_DTYPES = {
 SQLITE_ADJUSTMENT_TABLENAMES = frozenset(['splits', 'dividends', 'mergers'])
 
 
+SQLITE_DIVIDEND_PAYOUT_COLUMNS = frozenset(
+    ['sid',
+     'ex_date',
+     'declared_date',
+     'pay_date',
+     'record_date',
+     'net_amount',
+     'gross_amonut'])
 SQLITE_DIVIDEND_PAYOUT_COLUMN_DTYPES = {
+    'sid': integer,
     'ex_date': integer,
     'declared_date': integer,
+    'record_date': integer,
+    'pay_date': integer,
+    'net_amount': float,
+    'gross_amount': float,
+}
 
+
+SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMNS = frozenset(
+    ['sid',
+     'ex_date',
+     'declared_date',
+     'pay_date',
+     'payment_sid',
+     'ratio'])
+SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMN_DTYPES = {
+    'sid': integer,
+    'ex_date': integer,
+    'declared_date': integer,
+    'pay_date': integer,
+    'payment_sid': integer,
+    'ratio': float,
 }
 
 
@@ -119,13 +148,66 @@ class SQLiteAdjustmentWriter(object):
                 )
         return frame.to_sql(tablename, self.conn)
 
+    def write_dividend_payouts(self, frame):
+        if frozenset(frame.columns) != SQLITE_DIVIDEND_PAYOUT_COLUMNS:
+            raise ValueError(
+                "Unexpected frame columns:\n"
+                "Expected Columns: %s\n"
+                "Received Columns: %s" % (
+                    sorted(SQLITE_DIVIDEND_PAYOUT_COLUMNS),
+                    sorted(frame.columns.tolist()),
+                )
+            )
+
+        expected_dtypes = SQLITE_DIVIDEND_PAYOUT_COLUMN_DTYPES
+        actual_dtypes = frame.dtypes
+        for colname, expected in iteritems(expected_dtypes):
+            actual = actual_dtypes[colname]
+            if not issubdtype(actual, expected):
+                raise TypeError(
+                    "Expected data of type {expected} for column '{colname}', "
+                    "but got {actual}.".format(
+                        expected=expected,
+                        colname=colname,
+                        actual=actual,
+                    )
+                )
+        return frame.to_sql('dividends', self.conn)
+
+    def write_stock_dividend_payouts(self, frame):
+        if frozenset(frame.columns) != SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMNS:
+            raise ValueError(
+                "Unexpected frame columns:\n"
+                "Expected Columns: %s\n"
+                "Received Columns: %s" % (
+                    sorted(SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMNS),
+                    sorted(frame.columns.tolist()),
+                )
+            )
+
+        expected_dtypes = SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMN_DTYPES
+        actual_dtypes = frame.dtypes
+        for colname, expected in iteritems(expected_dtypes):
+            actual = actual_dtypes[colname]
+            if not issubdtype(actual, expected):
+                raise TypeError(
+                    "Expected data of type {expected} for column '{colname}', "
+                    "but got {actual}.".format(
+                        expected=expected,
+                        colname=colname,
+                        actual=actual,
+                    )
+                )
+        return frame.to_sql('stock_dividends', self.conn)
+
     def calc_dividend_ratios(self, dividends):
 
         # Remove rows with no gross_amount
         mask = pd.notnull(dividends.gross_amount)
 
-        sids = dividends.sid[mask].values
         ex_dates = dividends.ex_date[mask].values
+
+        sids = dividends.sid[mask].values
         gross_amounts = dividends.gross_amount[mask].values
 
         ratios = np.full(len(mask[mask]), np.nan)
@@ -160,9 +242,15 @@ class SQLiteAdjustmentWriter(object):
             'ratio': ratios,
         })
 
-    def write_dividend_data(self, dividends):
+    def write_dividend_data(self, dividends, stock_dividends):
+
+        # Filter out all non-USD
+        dividends = dividends[dividends.currency == 'USD']
+        del dividends['currency']
 
         # First write the dividend payouts.
+        self.write_dividend_payouts(dividends)
+        self.write_stock_dividends_payouts(dividends, stock_dividends)
 
         # Second from the dividend payouts, calculate ratios.
 
@@ -170,7 +258,7 @@ class SQLiteAdjustmentWriter(object):
 
         self.write_frame('dividends', dividend_ratios)
 
-    def write(self, splits, mergers, dividends):
+    def write(self, splits, mergers, dividends, stock_dividends):
         """
         Writes data to a SQLite file to be read by SQLiteAdjustmentReader.
 
@@ -214,7 +302,7 @@ class SQLiteAdjustmentWriter(object):
         """
         self.write_frame('splits', splits)
         self.write_frame('mergers', mergers)
-        self.write_dividend_data(dividends)
+        self.write_dividend_data(dividends, stock_dividends)
         self.conn.execute(
             "CREATE INDEX splits_sids "
             "ON splits(sid)"
