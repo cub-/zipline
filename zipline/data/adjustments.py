@@ -68,6 +68,7 @@ SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMNS = frozenset(
     ['sid',
      'ex_date',
      'declared_date',
+     'record_date',
      'pay_date',
      'payment_sid',
      'ratio'])
@@ -75,6 +76,7 @@ SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMN_DTYPES = {
     'sid': integer,
     'ex_date': integer,
     'declared_date': integer,
+    'record_date': integer,
     'pay_date': integer,
     'payment_sid': integer,
     'ratio': float,
@@ -172,7 +174,7 @@ class SQLiteAdjustmentWriter(object):
                         actual=actual,
                     )
                 )
-        return frame.to_sql('dividends', self.conn)
+        return frame.to_sql('dividend_payouts', self.conn)
 
     def write_stock_dividend_payouts(self, frame):
         if frozenset(frame.columns) != SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMNS:
@@ -198,7 +200,7 @@ class SQLiteAdjustmentWriter(object):
                         actual=actual,
                     )
                 )
-        return frame.to_sql('stock_dividends', self.conn)
+        return frame.to_sql('stock_dividend_payouts', self.conn)
 
     def calc_dividend_ratios(self, dividends):
 
@@ -249,8 +251,36 @@ class SQLiteAdjustmentWriter(object):
         del dividends['currency']
 
         # First write the dividend payouts.
-        self.write_dividend_payouts(dividends)
-        self.write_stock_dividends_payouts(dividends, stock_dividends)
+        dividend_payouts = dividends.copy()
+        dividend_payouts['ex_date'] = dividend_payouts['ex_date'].values.\
+            astype('datetime64[s]').astype(integer)
+        dividend_payouts['record_date'] = \
+            dividend_payouts['record_date'].values.astype('datetime64[s]').\
+            astype(integer)
+        dividend_payouts['declared_date'] = \
+            dividend_payouts['declared_date'].values.astype('datetime64[s]').\
+            astype(integer)
+        dividend_payouts['pay_date'] = \
+            dividend_payouts['declared_date'].values.astype('datetime64[s]').\
+            astype(integer)
+
+        self.write_dividend_payouts(dividend_payouts)
+
+        stock_dividend_payouts = stock_dividends.copy()
+        stock_dividend_payouts['ex_date'] = \
+            stock_dividend_payouts['ex_date'].values.\
+            astype('datetime64[s]').astype(integer)
+        stock_dividend_payouts['record_date'] = \
+            stock_dividend_payouts['record_date'].values.\
+            astype('datetime64[s]').astype(integer)
+        stock_dividend_payouts['declared_date'] = \
+            stock_dividend_payouts['declared_date'].\
+            values.astype('datetime64[s]').astype(integer)
+        stock_dividend_payouts['pay_date'] = \
+            stock_dividend_payouts['declared_date'].\
+            values.astype('datetime64[s]').astype(integer)
+
+        self.write_stock_dividend_payouts(stock_dividend_payouts)
 
         # Second from the dividend payouts, calculate ratios.
 
@@ -326,6 +356,30 @@ class SQLiteAdjustmentWriter(object):
         self.conn.execute(
             "CREATE INDEX dividends_effective_date "
             "ON dividends(effective_date)"
+        )
+        self.conn.execute(
+            "CREATE INDEX dividend_payouts_sid "
+            "ON dividend_payouts(sid)"
+        )
+        self.conn.execute(
+            "CREATE INDEX dividend_payouts_ex_date "
+            "ON dividends_payouts(ex_date)"
+        )
+        self.conn.execute(
+            "CREATE INDEX dividend_payouts_record_date "
+            "ON dividends_payouts(record_date)"
+        )
+        self.conn.execute(
+            "CREATE INDEX stock_dividend_payouts_sid "
+            "ON stock_dividend_payouts(sid)"
+        )
+        self.conn.execute(
+            "CREATE INDEX stock_dividend_payouts_ex_date "
+            "ON stock_dividends_payouts(ex_date)"
+        )
+        self.conn.execute(
+            "CREATE INDEX stock_dividend_payouts_record_date "
+            "ON stock_dividends_payouts(record_date)"
         )
 
     def close(self):
