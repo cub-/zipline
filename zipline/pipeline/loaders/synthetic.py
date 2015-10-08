@@ -271,10 +271,14 @@ class NullAdjustmentReader(SQLiteAdjustmentReader):
             'ratio': array([], dtype=float),
         })
         empty_dividends = DataFrame({
-            'gross_amount': array([], dtype=uint32),
-            'ex_date': array([], dtype=datetime64),
             'sid': array([], dtype=uint32),
-            'ratio': array([], dtype=float64),
+            'net_amount': array([], dtype=float64),
+            'gross_amount': array([], dtype=float64),
+            'record_date': array([], dtype='datetime64[ns]'),
+            'ex_date': array([], dtype='datetime64[ns]'),
+            'declared_date': array([], dtype='datetime64[ns]'),
+            'pay_date': array([], dtype='datetime64[ns]'),
         })
+
         writer.write(splits=empty, mergers=empty, dividends=empty_dividends)
         super(NullAdjustmentReader, self).__init__(conn)

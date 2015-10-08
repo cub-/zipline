@@ -244,11 +244,7 @@ class SQLiteAdjustmentWriter(object):
             'ratio': ratios,
         })
 
-    def write_dividend_data(self, dividends, stock_dividends):
-
-        # Filter out all non-USD
-        dividends = dividends[dividends.currency == 'USD']
-        del dividends['currency']
+    def write_dividend_data(self, dividends, stock_dividends=None):
 
         # First write the dividend payouts.
         dividend_payouts = dividends.copy()
@@ -266,19 +262,30 @@ class SQLiteAdjustmentWriter(object):
 
         self.write_dividend_payouts(dividend_payouts)
 
-        stock_dividend_payouts = stock_dividends.copy()
-        stock_dividend_payouts['ex_date'] = \
-            stock_dividend_payouts['ex_date'].values.\
-            astype('datetime64[s]').astype(integer)
-        stock_dividend_payouts['record_date'] = \
-            stock_dividend_payouts['record_date'].values.\
-            astype('datetime64[s]').astype(integer)
-        stock_dividend_payouts['declared_date'] = \
-            stock_dividend_payouts['declared_date'].\
-            values.astype('datetime64[s]').astype(integer)
-        stock_dividend_payouts['pay_date'] = \
-            stock_dividend_payouts['declared_date'].\
-            values.astype('datetime64[s]').astype(integer)
+        if stock_dividends is not None:
+            stock_dividend_payouts = stock_dividends.copy()
+            stock_dividend_payouts['ex_date'] = \
+                stock_dividend_payouts['ex_date'].values.\
+                astype('datetime64[s]').astype(integer)
+            stock_dividend_payouts['record_date'] = \
+                stock_dividend_payouts['record_date'].values.\
+                astype('datetime64[s]').astype(integer)
+            stock_dividend_payouts['declared_date'] = \
+                stock_dividend_payouts['declared_date'].\
+                values.astype('datetime64[s]').astype(integer)
+            stock_dividend_payouts['pay_date'] = \
+                stock_dividend_payouts['declared_date'].\
+                values.astype('datetime64[s]').astype(integer)
+        else:
+            stock_dividend_payouts = pd.DataFrame({
+                'sid': np.array([], dtype=uint32),
+                'record_date': np.array([], dtype=uint32),
+                'ex_date': np.array([], dtype=uint32),
+                'declared_date': np.array([], dtype=uint32),
+                'pay_date': np.array([], dtype=uint32),
+                'payment_sid': np.array([], dtype=uint32),
+                'ratio': np.array([], dtype=float),
+            })
 
         self.write_stock_dividend_payouts(stock_dividend_payouts)
 
@@ -288,7 +295,7 @@ class SQLiteAdjustmentWriter(object):
 
         self.write_frame('dividends', dividend_ratios)
 
-    def write(self, splits, mergers, dividends, stock_dividends):
+    def write(self, splits, mergers, dividends, stock_dividends=None):
         """
         Writes data to a SQLite file to be read by SQLiteAdjustmentReader.
 
